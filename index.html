@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>30 Plants a Week Challenge</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --green: #1D9E75; --green-light: #E1F5EE; --green-dark: #0F6E56; --green-mid: #9FE1CB;
+  --text: #1a1a1a; --text-muted: #666; --text-hint: #aaa;
+  --bg: #f5f4f0; --surface: #ffffff;
+  --border: rgba(0,0,0,0.11); --border-hover: rgba(0,0,0,0.22);
+  --radius: 12px; --radius-sm: 8px; --radius-pill: 99px;
+}
+body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* HEADER */
+#page-header { background: var(--green); color: white; padding: 18px 28px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+#page-header h1 { font-size: 22px; font-weight: 700; }
+#page-header p { font-size: 13px; opacity: 0.85; margin-top: 3px; }
+#counter-pill { background: rgba(255,255,255,0.18); border: 1.5px solid rgba(255,255,255,0.45); border-radius: var(--radius-pill); padding: 8px 22px; text-align: center; min-width: 110px; }
+#counter-pill .num { font-size: 30px; font-weight: 700; line-height: 1; }
+#counter-pill .lbl { font-size: 11px; opacity: 0.8; margin-top: 2px; }
+
+/* PROGRESS */
+#prog-wrap { background: white; padding: 10px 28px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid var(--border); }
+#prog-label { font-size: 13px; color: var(--text-muted); white-space: nowrap; }
+#prog-outer { flex: 1; height: 10px; background: #e4e4e0; border-radius: var(--radius-pill); overflow: hidden; }
+#prog-inner { height: 100%; background: var(--green); border-radius: var(--radius-pill); width: 0%; transition: width 0.4s ease; }
+#prog-pct { font-size: 13px; font-weight: 600; color: var(--green); min-width: 34px; }
+#celebrate { display: none; background: var(--green-light); border-bottom: 1px solid var(--green-mid); padding: 9px 28px; text-align: center; font-size: 14px; font-weight: 600; color: var(--green-dark); }
+
+/* LAYOUT */
+#main { display: grid; grid-template-columns: 272px 1fr; height: calc(100vh - 110px); }
+#sidebar { background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+#sidebar-inner { padding: 14px; flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+#sidebar h2 { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; }
+#search-box { width: 100%; padding: 8px 11px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; color: var(--text); background: var(--bg); margin-bottom: 9px; outline: none; font-family: inherit; }
+#search-box:focus { border-color: var(--green); }
+#cat-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 9px; }
+.cat-btn { padding: 3px 9px; font-size: 11px; border-radius: var(--radius-pill); border: 1px solid var(--border); cursor: pointer; background: var(--bg); color: var(--text-muted); font-family: inherit; transition: all 0.15s; }
+.cat-btn:hover { border-color: var(--green); color: var(--green); }
+.cat-btn.active { background: var(--green); color: white; border-color: var(--green); }
+
+/* FOOD LIST */
+#food-list { flex: 1; overflow-y: auto; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 5px; padding-right: 2px; position: relative; }
+#food-list::-webkit-scrollbar { width: 4px; }
+#food-list::-webkit-scrollbar-thumb { background: #ddd; border-radius: 4px; }
+.food-chip { padding: 5px 10px; font-size: 12px; border-radius: var(--radius-pill); border: 1px solid var(--border); cursor: grab; background: var(--bg); color: var(--text); transition: all 0.15s; white-space: nowrap; user-select: none; font-family: inherit; position: relative; display: flex; align-items: center; gap: 5px; }
+.food-chip .chip-img { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border); background: #eee; flex-shrink: 0; }
+.food-chip .chip-img.loading { opacity: 0; }
+.food-chip:hover:not(.used) { border-color: var(--green); background: var(--green-light); color: var(--green-dark); }
+.food-chip.used { opacity: 0.28; cursor: default; }
+.no-results { font-size: 13px; color: var(--text-hint); padding: 6px; }
+
+/* IMAGE TOOLTIP */
+#img-tooltip { position: fixed; z-index: 1000; pointer-events: none; display: none; flex-direction: column; align-items: center; background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.13); max-width: 160px; }
+#img-tooltip img { width: 140px; height: 140px; object-fit: cover; border-radius: var(--radius-sm); display: block; }
+#img-tooltip span { font-size: 12px; color: var(--text-muted); margin-top: 6px; text-align: center; font-weight: 500; }
+
+/* WEEK GRID */
+#week-area { background: var(--bg); overflow-y: auto; padding: 14px 18px 80px; display: flex; flex-direction: column; gap: 9px; }
+#week-area::-webkit-scrollbar { width: 5px; }
+#week-area::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+.day-row { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 11px 13px; min-height: 70px; transition: border-color 0.15s, background 0.15s; }
+.day-row.drag-over { border-color: var(--green); background: var(--green-light); }
+.day-header { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 7px; }
+.day-chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 32px; align-content: flex-start; }
+.drop-hint { font-size: 12px; color: var(--text-hint); align-self: center; font-style: italic; }
+.placed-chip { padding: 5px 10px; font-size: 12px; border-radius: var(--radius-pill); border: 1.5px solid; cursor: pointer; display: flex; align-items: center; gap: 5px; white-space: nowrap; font-family: inherit; transition: filter 0.15s; }
+.placed-chip img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(0,0,0,0.1); background: #eee; flex-shrink: 0; }
+.placed-chip:hover { filter: brightness(0.9); }
+.placed-chip .rx { font-size: 10px; opacity: 0.5; }
+.placed-chip:hover .rx { opacity: 1; }
+
+/* BOTTOM BAR */
+#bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid var(--border); padding: 9px 28px; display: flex; align-items: center; justify-content: space-between; z-index: 50; }
+#bottom-bar .tip { font-size: 12px; color: var(--text-hint); }
+#reset-btn { padding: 6px 16px; font-size: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: white; color: var(--text-muted); cursor: pointer; font-family: inherit; transition: all 0.15s; }
+#reset-btn:hover { border-color: #D85A30; color: #D85A30; }
+
+@media (max-width: 680px) {
+  #main { grid-template-columns: 1fr; height: auto; }
+  #sidebar { border-right: none; border-bottom: 1px solid var(--border); height: 320px; }
+  #week-area { overflow: visible; }
+}
+</style>
+</head>
+<body>
+
+<div id="img-tooltip"><img id="tt-img" src="" alt="" /><span id="tt-name"></span></div>
+
+<header id="page-header">
+  <div>
+    <h1>30 Plants a Week Challenge</h1>
+    <p>Drag a fruit or vegetable onto any day. Aim for 30 different plants!</p>
+  </div>
+  <div id="counter-pill">
+    <div class="num" id="count-num">0</div>
+    <div class="lbl">different plants</div>
+  </div>
+</header>
+
+<div id="prog-wrap">
+  <span id="prog-label">Progress to 30:</span>
+  <div id="prog-outer"><div id="prog-inner"></div></div>
+  <span id="prog-pct">0%</span>
+</div>
+
+<div id="celebrate"></div>
+
+<main id="main">
+  <aside id="sidebar">
+    <div id="sidebar-inner">
+      <h2>Fruits &amp; Vegetables</h2>
+      <input id="search-box" type="search" placeholder="Search..." aria-label="Search" />
+      <div id="cat-tabs"></div>
+      <div id="food-list"></div>
+    </div>
+  </aside>
+  <section id="week-area"></section>
+</main>
+
+<div id="bottom-bar">
+  <span class="tip">Tip: hover to see a photo. Click a placed plant to remove it.</span>
+  <button id="reset-btn">Clear all</button>
+</div>
+
+<script>
+// ── FOOD DATA ──────────────────────────────────────────────────────────────
+// Each entry: [displayName, wikipediaSearchTerm (optional)]
+const FOODS = {
+  "Vegetables": [
+    ["Broccoli"],["Carrot"],["Spinach"],["Capsicum (red)","Capsicum"],["Capsicum (yellow)","Capsicum"],
+    ["Capsicum (orange)","Capsicum"],["Tomato"],["Cucumber"],["Zucchini"],["Pumpkin"],
+    ["Beetroot"],["Sweet potato"],["Potato"],["Onion"],["Garlic"],["Ginger"],
+    ["Celery"],["Leek"],["Cabbage"],["Cauliflower"],["Brussels sprouts"],["Eggplant"],
+    ["Green beans","Green bean"],["Snow peas","Snow pea"],["Peas","Pea"],["Corn"],
+    ["Asparagus"],["Kale"],["Silverbeet","Chard"],["Bok choy"],["Broccolini"],["Fennel"],
+    ["Radish"],["Turnip"],["Parsnip"],["Mushroom"],["Rocket","Arugula"],["Lettuce"],
+    ["Baby spinach","Spinach"],["Watercress"],["Okra"],["Artichoke"],["Taro"],["Yam"],
+    ["Spring onion","Scallion"],["Shallot"],["Chilli","Chili pepper"],["Bitter melon"],
+    ["Molokhia"],["Purslane"],["Choko","Chayote"]
+  ],
+  "Fruits": [
+    ["Apple"],["Banana"],["Mango"],["Orange"],["Watermelon"],["Strawberry"],["Grapes","Grape"],
+    ["Blueberry"],["Raspberry"],["Pear"],["Peach"],["Plum"],["Apricot"],["Cherry"],["Kiwi","Kiwifruit"],
+    ["Pineapple"],["Papaya"],["Passionfruit","Passion fruit"],["Guava"],["Pomegranate"],["Lemon"],
+    ["Lime"],["Grapefruit"],["Mandarin","Mandarin orange"],["Fig"],["Date","Date palm"],["Lychee"],
+    ["Dragonfruit","Dragon fruit"],["Persimmon"],["Quince"],["Mulberry"],["Nectarine"],["Avocado"],
+    ["Coconut"],["Jackfruit"],["Tamarind"],["Feijoa"],["Starfruit","Carambola"],
+    ["Rockmelon","Cantaloupe"],["Honeydew melon","Honeydew"],["Cumquat","Kumquat"],["Blackberry"],
+    ["Rambutan"],["Longan"],["Blood orange"]
+  ],
+  "Legumes": [
+    ["Red lentils","Lentil"],["Green lentils","Lentil"],["Chickpeas","Chickpea"],["Black beans","Black bean"],
+    ["Kidney beans","Kidney bean"],["Cannellini beans","Cannellini bean"],["Edamame"],
+    ["Broad beans","Broad bean"],["Mung beans","Mung bean"],["Adzuki beans","Adzuki bean"],
+    ["Butter beans","Butter bean"],["Split peas","Split pea"],["Black-eyed peas","Black-eyed pea"],
+    ["Fava beans","Fava bean"],["Borlotti beans","Borlotti bean"]
+  ],
+  "Grains & Seeds": [
+    ["Teff (injera)","Teff"],["Barley"],["Oats"],["Quinoa"],["Brown rice","Rice"],
+    ["Rye"],["Millet"],["Sorghum"],["Flaxseed"],["Chia seeds","Chia"],
+    ["Sunflower seeds","Sunflower"],["Pumpkin seeds","Pumpkin"],["Sesame seeds","Sesame"],
+    ["Walnuts","Walnut"],["Almonds","Almond"],["Pistachios","Pistachio"],["Cashews","Cashew"],
+    ["Pine nuts","Pine nut"],["Hemp seeds","Hemp"]
+  ],
+  "Herbs & Spices": [
+    ["Parsley"],["Coriander"],["Mint"],["Basil"],["Thyme"],["Rosemary"],
+    ["Turmeric (fresh)","Turmeric"],["Cumin"],["Berbere spice","Berbere"],
+    ["Za'atar","Zaatar"],["Sumac"],["Fenugreek"],["Dill"],["Lemongrass"],
+    ["Galangal"],["Cardamom","Cardamom"],["Nigella seeds","Nigella sativa"],["Molokhia"]
+  ]
+};
+
+const COLORS = [
+  {bg:"#E1F5EE",border:"#1D9E75",text:"#0F6E56"},{bg:"#FAECE7",border:"#D85A30",text:"#712B13"},
+  {bg:"#E6F1FB",border:"#378ADD",text:"#185FA5"},{bg:"#FAEEDA",border:"#BA7517",text:"#633806"},
+  {bg:"#FBEAF0",border:"#D4537E",text:"#72243E"},{bg:"#EAF3DE",border:"#639922",text:"#3B6D11"},
+  {bg:"#EEEDFE",border:"#7F77DD",text:"#3C3489"},{bg:"#F1EFE8",border:"#888780",text:"#2C2C2A"},
+];
+const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+
+// ── STATE ─────────────────────────────────────────────────────────────────
+const state = { placed: {}, drag: null };
+DAYS.forEach(d => state.placed[d] = []);
+
+// image cache: name → url or null
+const imgCache = {};
+
+// flat food list
+const allFoods = [];
+Object.entries(FOODS).forEach(([cat, items]) =>
+  items.forEach(([name, wiki]) => {
+    const wikiKey = wiki || name;
+    allFoods.push({name, cat, wiki: wikiKey});
+  })
+);
+
+// deduplicate display names
+const seenNames = new Set();
+const uniqueFoods = [];
+allFoods.forEach(f => { if (!seenNames.has(f.name)) { seenNames.add(f.name); uniqueFoods.push(f); } });
+
+// ── COLOR & UTILS ──────────────────────────────────────────────────────────
+function colorFor(name) {
+  let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) & 0xffff;
+  return COLORS[h % COLORS.length];
+}
+function getUsed() {
+  const s = new Set();
+  DAYS.forEach(d => state.placed[d].forEach(f => s.add(f)));
+  return s;
+}
+function encode(s) { return encodeURIComponent(s); }
+
+// ── WIKIPEDIA IMAGE FETCH ──────────────────────────────────────────────────
+async function fetchWikiImage(food) {
+  const key = food.name;
+  if (imgCache[key] !== undefined) return imgCache[key];
+  imgCache[key] = null; // mark as fetching
+  try {
+    const r = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encode(food.wiki)}`,
+      { headers: { 'Api-User-Agent': '30PlantsTracker/1.0 (classroom tool)' } }
+    );
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    const url = d.thumbnail?.source || null;
+    imgCache[key] = url;
+  } catch { imgCache[key] = null; }
+  return imgCache[key];
+}
+
+// Pre-fetch images for visible chips after a short delay
+function prefetchVisible(foods) {
+  foods.slice(0, 40).forEach((f, i) => {
+    if (imgCache[f.name] === undefined) {
+      setTimeout(() => fetchWikiImage(f).then(() => updateChipImage(f.name)), i * 60);
+    }
+  });
+}
+
+function updateChipImage(name) {
+  const url = imgCache[name];
+  document.querySelectorAll(`.chip-img[data-name="${CSS.escape(name)}"]`).forEach(img => {
+    if (url) { img.src = url; img.classList.remove('loading'); }
+  });
+  document.querySelectorAll(`.placed-img[data-name="${CSS.escape(name)}"]`).forEach(img => {
+    if (url) { img.src = url; }
+  });
+}
+
+// ── TOOLTIP ────────────────────────────────────────────────────────────────
+const tooltip = document.getElementById('img-tooltip');
+const ttImg = document.getElementById('tt-img');
+const ttName = document.getElementById('tt-name');
+let tooltipVisible = false;
+
+function showTooltip(name, x, y) {
+  const url = imgCache[name];
+  if (!url) return;
+  ttImg.src = url;
+  ttName.textContent = name;
+  tooltip.style.display = 'flex';
+  tooltipVisible = true;
+  positionTooltip(x, y);
+}
+function positionTooltip(x, y) {
+  const tw = 160, th = 180;
+  let left = x + 14, top = y - 90;
+  if (left + tw > window.innerWidth - 10) left = x - tw - 14;
+  if (top < 10) top = 10;
+  if (top + th > window.innerHeight - 10) top = window.innerHeight - th - 10;
+  tooltip.style.left = left + 'px';
+  tooltip.style.top = top + 'px';
+}
+function hideTooltip() { tooltip.style.display = 'none'; tooltipVisible = false; }
+
+document.addEventListener('mousemove', e => { if (tooltipVisible) positionTooltip(e.clientX, e.clientY); });
+
+// ── COUNTER ────────────────────────────────────────────────────────────────
+function updateCounter() {
+  const n = getUsed().size;
+  document.getElementById('count-num').textContent = n;
+  const pct = Math.min(100, Math.round(n / 30 * 100));
+  document.getElementById('prog-inner').style.width = pct + '%';
+  document.getElementById('prog-pct').textContent = pct + '%';
+  const cel = document.getElementById('celebrate');
+  if (n >= 30) {
+    cel.style.display = 'block';
+    cel.textContent = n === 30 ? '🌿 You reached 30 plants this week! Amazing work!' : `🌿 Incredible! ${n} different plants this week!`;
+  } else {
+    cel.style.display = 'none';
+  }
+}
+
+// ── RENDER FOOD LIST ───────────────────────────────────────────────────────
+let activeCategory = 'All';
+let searchTerm = '';
+
+function renderFoodList() {
+  const used = getUsed();
+  const list = document.getElementById('food-list');
+  list.innerHTML = '';
+  const filtered = uniqueFoods.filter(f => {
+    const matchCat = activeCategory === 'All' || f.cat === activeCategory;
+    const matchSearch = f.name.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchCat && matchSearch;
+  });
+  if (!filtered.length) {
+    const el = document.createElement('div'); el.className = 'no-results'; el.textContent = 'No results.';
+    list.appendChild(el); return;
+  }
+  filtered.forEach(f => {
+    const isUsed = used.has(f.name);
+    const chip = document.createElement('div');
+    chip.className = 'food-chip' + (isUsed ? ' used' : '');
+    chip.draggable = !isUsed;
+
+    // tiny circular image
+    const cImg = document.createElement('img');
+    cImg.className = 'chip-img loading';
+    cImg.setAttribute('data-name', f.name);
+    cImg.alt = f.name;
+    const cached = imgCache[f.name];
+    if (cached) { cImg.src = cached; cImg.classList.remove('loading'); }
+    chip.appendChild(cImg);
+
+    const label = document.createElement('span');
+    label.textContent = f.name;
+    chip.appendChild(label);
+
+    if (!isUsed) {
+      chip.addEventListener('dragstart', e => {
+        state.drag = f.name;
+        e.dataTransfer.setData('text/plain', f.name);
+        chip.style.opacity = '0.4';
+      });
+      chip.addEventListener('dragend', () => chip.style.opacity = '');
+      chip.addEventListener('mouseenter', e => {
+        if (imgCache[f.name] === undefined) {
+          fetchWikiImage(f).then(() => { if (chip.matches(':hover')) showTooltip(f.name, e.clientX, e.clientY); });
+        } else {
+          showTooltip(f.name, e.clientX, e.clientY);
+        }
+      });
+      chip.addEventListener('mouseleave', hideTooltip);
+    }
+    list.appendChild(chip);
+  });
+  prefetchVisible(filtered.filter(f => !used.has(f.name)));
+}
+
+function renderCategoryTabs() {
+  const tabs = document.getElementById('cat-tabs');
+  tabs.innerHTML = '';
+  ['All', ...Object.keys(FOODS)].forEach(cat => {
+    const btn = document.createElement('button');
+    btn.className = 'cat-btn' + (cat === activeCategory ? ' active' : '');
+    btn.textContent = cat;
+    btn.addEventListener('click', () => { activeCategory = cat; renderAll(); });
+    tabs.appendChild(btn);
+  });
+}
+
+// ── RENDER WEEK ────────────────────────────────────────────────────────────
+function renderPlacedChips(day) {
+  const container = document.getElementById('chips-' + day);
+  if (!container) return;
+  container.innerHTML = '';
+  if (!state.placed[day].length) {
+    const hint = document.createElement('span');
+    hint.className = 'drop-hint'; hint.textContent = 'Drop a plant here';
+    container.appendChild(hint); return;
+  }
+  state.placed[day].forEach(foodName => {
+    const col = colorFor(foodName);
+    const chip = document.createElement('button');
+    chip.className = 'placed-chip';
+    chip.style.background = col.bg;
+    chip.style.borderColor = col.border;
+    chip.style.color = col.text;
+    chip.title = 'Remove ' + foodName;
+
+    const pImg = document.createElement('img');
+    pImg.className = 'placed-img';
+    pImg.setAttribute('data-name', foodName);
+    pImg.alt = foodName;
+    const cached = imgCache[foodName];
+    if (cached) pImg.src = cached;
+    else {
+      pImg.src = '';
+      const fObj = uniqueFoods.find(f => f.name === foodName);
+      if (fObj) fetchWikiImage(fObj).then(url => { if (url) { pImg.src = url; } });
+    }
+    chip.appendChild(pImg);
+
+    const lbl = document.createElement('span'); lbl.textContent = foodName; chip.appendChild(lbl);
+    const rx = document.createElement('span'); rx.className = 'rx'; rx.textContent = '✕'; chip.appendChild(rx);
+
+    chip.addEventListener('click', () => {
+      state.placed[day] = state.placed[day].filter(f => f !== foodName);
+      renderAll();
+    });
+    chip.addEventListener('mouseenter', e => showTooltip(foodName, e.clientX, e.clientY));
+    chip.addEventListener('mouseleave', hideTooltip);
+    container.appendChild(chip);
+  });
+}
+
+function buildWeekGrid() {
+  const area = document.getElementById('week-area');
+  area.innerHTML = '';
+  DAYS.forEach(day => {
+    const row = document.createElement('div');
+    row.className = 'day-row';
+    const hdr = document.createElement('div'); hdr.className = 'day-header'; hdr.textContent = day;
+    const chips = document.createElement('div'); chips.className = 'day-chips'; chips.id = 'chips-' + day;
+    chips.innerHTML = '<span class="drop-hint">Drop a plant here</span>';
+    row.appendChild(hdr); row.appendChild(chips);
+    row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', e => {
+      e.preventDefault(); row.classList.remove('drag-over');
+      const food = e.dataTransfer.getData('text/plain') || state.drag;
+      if (!food || getUsed().has(food)) return;
+      if (!state.placed[day].includes(food)) { state.placed[day].push(food); renderAll(); }
+    });
+    area.appendChild(row);
+  });
+}
+
+function renderAll() {
+  renderCategoryTabs();
+  renderFoodList();
+  DAYS.forEach(d => renderPlacedChips(d));
+  updateCounter();
+}
+
+document.getElementById('search-box').addEventListener('input', e => { searchTerm = e.target.value; renderAll(); });
+document.getElementById('reset-btn').addEventListener('click', () => {
+  if (confirm('Clear all plants from the week?')) { DAYS.forEach(d => state.placed[d] = []); renderAll(); }
+});
+
+buildWeekGrid();
+renderAll();
+</script>
+</body>
+</html>
