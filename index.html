@@ -137,7 +137,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color:
 <header id="page-header">
   <div>
     <h1>30 Plants a Week</h1>
-    <p>Drag a fruit or vegetable onto any day. Aim for 30 different plants!</p>
+    <p>Drag fruits and vegetables onto any day — repeat across days is fine! Aim for 30 different plants.</p>
   </div>
   <div id="counter-pill">
     <div class="num" id="count-num">0</div>
@@ -339,22 +339,15 @@ function openDayPicker(foodName) {
   const used = getUsed();
 
   DAYS.forEach(day => {
-    const alreadyHere = state.placed[day].includes(foodName);
     const btn = document.createElement('button');
-    btn.className = 'day-pick-btn' + (alreadyHere ? ' already-has' : '');
+    btn.className = 'day-pick-btn';
     const count = state.placed[day].length;
     btn.innerHTML = `<span>${day}</span><span class="day-count">${count} plant${count !== 1 ? 's' : ''}</span>`;
-
-    if (!alreadyHere) {
-      btn.addEventListener('click', () => {
-        state.placed[day].push(foodName);
-        closeDayPicker();
-        renderAll();
-      });
-    } else {
-      btn.title = 'Already added';
-      btn.style.opacity = '0.5';
-    }
+    btn.addEventListener('click', () => {
+      state.placed[day].push(foodName);
+      closeDayPicker();
+      renderAll();
+    });
     pickerGrid.appendChild(btn);
   });
 
@@ -383,7 +376,6 @@ let activeCategory = 'All';
 let searchTerm = '';
 
 function renderFoodList() {
-  const used = getUsed();
   const list = document.getElementById('food-list');
   list.innerHTML = '';
   const filtered = uniqueFoods.filter(f => {
@@ -397,9 +389,8 @@ function renderFoodList() {
   }
 
   filtered.forEach(f => {
-    const isUsed = used.has(f.name);
     const chip = document.createElement('div');
-    chip.className = 'food-chip' + (isUsed ? ' used' : '');
+    chip.className = 'food-chip';
     chip.dataset.food = f.name;
 
     const cImg = document.createElement('img');
@@ -413,33 +404,32 @@ function renderFoodList() {
     label.textContent = f.name;
     chip.appendChild(label);
 
-    if (!isUsed) {
-      // DESKTOP: drag
-      chip.draggable = true;
-      chip.addEventListener('dragstart', e => {
-        state.drag = f.name;
-        e.dataTransfer.setData('text/plain', f.name);
-        chip.style.opacity = '0.4';
-      });
-      chip.addEventListener('dragend', () => chip.style.opacity = '');
-      chip.addEventListener('mouseenter', e => {
-        if (imgCache[f.name] === undefined) {
-          fetchWikiImage(f).then(() => { if (chip.matches(':hover')) showTooltip(f.name, e.clientX, e.clientY); });
-        } else showTooltip(f.name, e.clientX, e.clientY);
-      });
-      chip.addEventListener('mouseleave', hideTooltip);
+    // DESKTOP: drag
+    chip.draggable = true;
+    chip.addEventListener('dragstart', e => {
+      state.drag = f.name;
+      e.dataTransfer.setData('text/plain', f.name);
+      chip.style.opacity = '0.4';
+    });
+    chip.addEventListener('dragend', () => chip.style.opacity = '');
+    chip.addEventListener('mouseenter', e => {
+      if (imgCache[f.name] === undefined) {
+        fetchWikiImage(f).then(() => { if (chip.matches(':hover')) showTooltip(f.name, e.clientX, e.clientY); });
+      } else showTooltip(f.name, e.clientX, e.clientY);
+    });
+    chip.addEventListener('mouseleave', hideTooltip);
 
-      // TOUCH: tap to select, then tap a day
-      chip.addEventListener('click', e => {
-        if (!isTouchDevice()) return;
-        e.preventDefault();
-        openDayPicker(f.name);
-      });
-    }
+    // TOUCH: tap to open day picker
+    chip.addEventListener('click', e => {
+      if (!isTouchDevice()) return;
+      e.preventDefault();
+      openDayPicker(f.name);
+    });
+
     list.appendChild(chip);
   });
 
-  prefetchVisible(filtered.filter(f => !used.has(f.name)));
+  prefetchVisible(filtered);
 }
 
 function renderCategoryTabs() {
@@ -489,7 +479,8 @@ function renderPlacedChips(day) {
     const rx = document.createElement('span'); rx.className = 'rx'; rx.textContent = '✕'; chip.appendChild(rx);
 
     chip.addEventListener('click', () => {
-      state.placed[day] = state.placed[day].filter(f => f !== foodName);
+      const idx = state.placed[day].indexOf(foodName);
+      if (idx !== -1) state.placed[day].splice(idx, 1);
       renderAll();
     });
     chip.addEventListener('mouseenter', e => showTooltip(foodName, e.clientX, e.clientY));
@@ -520,8 +511,8 @@ function buildWeekGrid() {
     row.addEventListener('drop', e => {
       e.preventDefault(); row.classList.remove('drag-over');
       const food = e.dataTransfer.getData('text/plain') || state.drag;
-      if (!food || getUsed().has(food)) return;
-      if (!state.placed[day].includes(food)) { state.placed[day].push(food); renderAll(); }
+      if (!food) return;
+      state.placed[day].push(food); renderAll();
     });
 
     area.appendChild(row);
